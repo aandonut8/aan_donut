@@ -3,7 +3,17 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>AAN DONUT - Order Donat Online</title>
+<title>AAN DONUT - Order Donat & Bomboloni Online</title>
+<meta name="description" content="Pesan donat & bomboloni AAN DONUT langsung lewat WhatsApp. Pilih varian, glaze, topping, atau filling favoritmu, lalu pesan dalam beberapa tap." />
+<meta name="theme-color" content="#3A2318" />
+
+<link rel="icon" type="image/webp" href="logo.webp" />
+<link rel="apple-touch-icon" href="logo.webp" />
+
+<meta property="og:title" content="AAN DONUT — Rasa Sepenuh Hati" />
+<meta property="og:description" content="Pesan donat & bomboloni favoritmu langsung lewat WhatsApp." />
+<meta property="og:image" content="logo.webp" />
+<meta property="og:type" content="website" />
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
@@ -11,13 +21,13 @@
     theme: {
       extend: {
         colors: {
-          cream: '#F7ECDA',
+          cream: '#FBF3E6',
           paper: '#FFFDF8',
           choco: '#3A2318',
           chocosoft: '#6B4A38',
-          raspberry: '#C9456B',
-          raspberrydark: '#A8365B',
-          butter: '#F0A93B',
+          gold: '#E8890D',
+          golddark: '#C36F00',
+          rust: '#A8380A',
           kraft: '#E4D3B4',
         },
         fontFamily: {
@@ -42,7 +52,14 @@
 
 <style>
   body { font-family: 'Plus Jakarta Sans', sans-serif; }
-  ::selection { background: #C9456B; color: #FFFDF8; }
+  ::selection { background: #E8890D; color: #FFFDF8; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 </style>
 </head>
 <body class="bg-cream font-body text-choco">
@@ -65,6 +82,10 @@ const firebaseConfig = {
 
 const WHATSAPP_NUMBER = "6285284847171"; // format 62xxxxxxxxxx, tanpa + atau 0 di depan
 const NAMA_TOKO = "AAN DONUT";
+const TAGLINE = "Rasa Sepenuh Hati";
+const MIN_QTY = 6; // jumlah pcs minimal per pesanan (1 dus)
+const QTY_STEP = 3; // kelipatan naik/turunnya jumlah pesanan
+const LOGO_SRC = "logo.webp"; // taruh file logo.webp satu folder dengan index.html
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
@@ -85,23 +106,21 @@ function generateId() {
   return Math.random().toString(36).slice(2, 10);
 }
 
-/* =========================================================
-   IKON
-   ========================================================= */
-function DonutMark({ className }) {
-  return (
-    <svg viewBox="0 0 48 48" className={className} xmlns="http://www.w3.org/2000/svg">
-      <circle cx="24" cy="24" r="15" fill="none" stroke="#C68A5C" strokeWidth="13" />
-      <circle
-        cx="24" cy="24" r="15" fill="none" stroke="#C9456B" strokeWidth="10"
-        strokeDasharray="68 26" strokeLinecap="round" transform="rotate(-90 24 24)"
-      />
-      <circle cx="16" cy="12" r="1.5" fill="#F0A93B" />
-      <circle cx="28" cy="9" r="1.3" fill="#FFFDF8" />
-      <circle cx="35" cy="17" r="1.5" fill="#F0A93B" />
-      <circle cx="13" cy="21" r="1.3" fill="#FFFDF8" />
-    </svg>
-  );
+// Ubah nomor HP pelanggan (0852..., 62852..., +62852...) jadi link WhatsApp.
+function toWaLink(phone, text) {
+  const digits = (phone || "").replace(/\D/g, "");
+  if (digits.length < 8) return null;
+  let normalized = digits;
+  if (normalized.startsWith("0")) normalized = "62" + normalized.slice(1);
+  else if (!normalized.startsWith("62")) normalized = "62" + normalized;
+  return `https://wa.me/${normalized}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
+}
+
+function formatWaktu(timestamp) {
+  if (!timestamp || !timestamp.toDate) return "Baru saja";
+  return timestamp.toDate().toLocaleString("id-ID", {
+    day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+  });
 }
 
 /* =========================================================
@@ -110,7 +129,7 @@ function DonutMark({ className }) {
 function Spinner() {
   return (
     <div className="flex justify-center py-10">
-      <div className="w-8 h-8 border-4 border-kraft border-t-raspberry rounded-full animate-spin"></div>
+      <div className="w-8 h-8 border-4 border-kraft border-t-gold rounded-full animate-spin"></div>
     </div>
   );
 }
@@ -123,9 +142,53 @@ function Toast({ toast, onClose }) {
   if (!toast.message) return null;
   const isError = toast.type === "error";
   return (
-    <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full shadow-lg text-sm font-medium flex items-center gap-3 ${isError ? "bg-choco text-cream" : "bg-raspberry text-white"}`}>
+    <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full shadow-lg text-sm font-medium flex items-center gap-3 max-w-[90vw] ${isError ? "bg-choco text-cream" : "bg-gold text-white"}`}>
       <span>{toast.message}</span>
-      <button onClick={onClose} className="opacity-60 hover:opacity-100">✕</button>
+      <button onClick={onClose} className="opacity-60 hover:opacity-100 shrink-0">✕</button>
+    </div>
+  );
+}
+
+// Pilihan bergaya "chip" — dipakai untuk Varian, Glaze, Topping, Filling.
+function OptionChips({ label, options, value, onChange, allowNone, noneLabel, emptyText }) {
+  return (
+    <div>
+      <label className="text-sm text-chocosoft">{label}</label>
+      <div className="flex flex-wrap gap-2 mt-1.5">
+        {allowNone && (
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className={`px-3.5 py-2 rounded-full text-sm border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold ${
+              value === "" ? "bg-choco text-cream border-choco" : "bg-white text-chocosoft border-kraft hover:border-choco/40"
+            }`}
+          >
+            {noneLabel}
+          </button>
+        )}
+        {options.map((o) => {
+          const disabled = o.available === false;
+          const selected = value === o.id;
+          return (
+            <button
+              type="button"
+              key={o.id}
+              disabled={disabled}
+              onClick={() => onChange(o.id)}
+              className={`px-3.5 py-2 rounded-full text-sm border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold ${
+                disabled
+                  ? "bg-kraft/20 text-chocosoft/40 border-kraft/60 line-through cursor-not-allowed"
+                  : selected
+                  ? "bg-gold text-white border-gold shadow-sm shadow-gold/40"
+                  : "bg-white text-chocosoft border-kraft hover:border-gold/60"
+              }`}
+            >
+              {o.name}{disabled ? " · Habis" : ""}
+            </button>
+          );
+        })}
+      </div>
+      {options.length === 0 && emptyText && <p className="text-xs text-rust mt-1">{emptyText}</p>}
     </div>
   );
 }
@@ -135,22 +198,27 @@ function Toast({ toast, onClose }) {
    ========================================================= */
 function Header({ view, setView }) {
   return (
-    <header className="bg-choco text-cream sticky top-0 z-20">
-      <div className="max-w-md mx-auto px-5 py-4 flex items-center justify-between">
+    <header className="bg-choco text-cream sticky top-0 z-20 shadow-md shadow-choco/20">
+      <div className="max-w-md mx-auto px-5 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <DonutMark className="w-9 h-9" />
-          <span className="font-display text-2xl">{NAMA_TOKO}</span>
+          <img
+            src={LOGO_SRC}
+            alt={NAMA_TOKO}
+            className="w-11 h-11 rounded-full ring-2 ring-gold/50 object-cover"
+            onError={(e) => { e.target.style.display = "none"; }}
+          />
+          <span className="font-display text-2xl tracking-wide">{NAMA_TOKO}</span>
         </div>
         <nav className="flex gap-1 bg-black/20 rounded-full p-1">
           <button
             onClick={() => setView("order")}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${view === "order" ? "bg-raspberry text-white" : "text-cream/60"}`}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold ${view === "order" ? "bg-gold text-white" : "text-cream/60"}`}
           >
             Pesan
           </button>
           <button
             onClick={() => setView("admin")}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${view === "admin" ? "bg-raspberry text-white" : "text-cream/60"}`}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold ${view === "admin" ? "bg-gold text-white" : "text-cream/60"}`}
           >
             Admin
           </button>
@@ -160,18 +228,41 @@ function Header({ view, setView }) {
   );
 }
 
+function BrandStrip() {
+  return (
+    <div className="flex items-center gap-3.5 bg-gradient-to-r from-gold/15 via-gold/5 to-transparent border border-gold/25 rounded-2xl px-4 py-3.5">
+      <img
+        src={LOGO_SRC}
+        alt={NAMA_TOKO}
+        className="w-14 h-14 rounded-full shrink-0 object-cover"
+        onError={(e) => { e.target.style.display = "none"; }}
+      />
+      <div>
+        <p className="font-display text-lg leading-none text-choco">{NAMA_TOKO}</p>
+        <p className="text-sm text-rust italic mt-1.5">{TAGLINE}</p>
+      </div>
+    </div>
+  );
+}
+
 /* =========================================================
    HALAMAN PEMESANAN
    ========================================================= */
 function OrderPage({ notify }) {
+  const [category, setCategory] = useState("donat"); // "donat" | "bomboloni"
   const [variants, setVariants] = useState([]);
   const [glazes, setGlazes] = useState([]);
   const [toppings, setToppings] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [fillings, setFillings] = useState([]);
+  const [harga, setHarga] = useState({ donatDusIsi6: 0, bombolomiDusIsi6: 0 });
+  const [info, setInfo] = useState({ text: "", donatAvailable: true, bombolomiAvailable: true });
+  const [loadingVariants, setLoadingVariants] = useState(true);
 
+  const [targetQty, setTargetQty] = useState(MIN_QTY);
   const [selVariant, setSelVariant] = useState("");
   const [selGlaze, setSelGlaze] = useState("");
   const [selTopping, setSelTopping] = useState("");
+  const [selFilling, setSelFilling] = useState("");
   const [qty, setQty] = useState(1);
 
   const [cart, setCart] = useState([]);
@@ -180,171 +271,273 @@ function OrderPage({ notify }) {
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  const variantCollection = category === "donat" ? "variants" : "variantsBomboloni";
+  const categoryAvailable = category === "donat" ? (info.donatAvailable !== false) : (info.bombolomiAvailable !== false);
+
   useEffect(() => {
-    const unsub1 = db.collection("variants").orderBy("name").onSnapshot(
-      (snap) => setVariants(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
-      (err) => console.error("variants:", err)
+    setLoadingVariants(true);
+    setCart([]);
+    setTargetQty(MIN_QTY);
+    setSelVariant(""); setSelGlaze(""); setSelTopping(""); setSelFilling("");
+    const unsub = db.collection(variantCollection).orderBy("name").onSnapshot(
+      (snap) => { setVariants(snap.docs.map((d) => ({ id: d.id, ...d.data() }))); setLoadingVariants(false); },
+      (err) => { console.error("variants:", err); setLoadingVariants(false); }
     );
+    return unsub;
+  }, [category]);
+
+  useEffect(() => {
     const unsub2 = db.collection("glazes").orderBy("name").onSnapshot(
-      (snap) => setGlazes(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
-      (err) => console.error("glazes:", err)
+      (snap) => setGlazes(snap.docs.map((d) => ({ id: d.id, ...d.data() }))), (err) => console.error("glazes:", err)
     );
     const unsub3 = db.collection("toppings").orderBy("name").onSnapshot(
-      (snap) => {
-        setToppings(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-        setLoading(false);
-      },
-      (err) => { console.error("toppings:", err); setLoading(false); }
+      (snap) => setToppings(snap.docs.map((d) => ({ id: d.id, ...d.data() }))), (err) => console.error("toppings:", err)
     );
-    return () => { unsub1(); unsub2(); unsub3(); };
+    const unsub4 = db.collection("fillings").orderBy("name").onSnapshot(
+      (snap) => setFillings(snap.docs.map((d) => ({ id: d.id, ...d.data() }))), (err) => console.error("fillings:", err)
+    );
+    const unsub5 = db.collection("settings").doc("harga").onSnapshot(
+      (doc) => setHarga(doc.exists ? doc.data() : { donatDusIsi6: 0, bombolomiDusIsi6: 0 }), (err) => console.error("harga:", err)
+    );
+    const unsub6 = db.collection("settings").doc("info").onSnapshot(
+      (doc) => setInfo(doc.exists ? { text: "", donatAvailable: true, bombolomiAvailable: true, ...doc.data() } : { text: "", donatAvailable: true, bombolomiAvailable: true }),
+      (err) => console.error("info:", err)
+    );
+    return () => { unsub2(); unsub3(); unsub4(); unsub5(); unsub6(); };
   }, []);
 
+  const hargaDusIsi6 = category === "donat" ? (harga.donatDusIsi6 || 0) : (harga.bombolomiDusIsi6 || 0);
+  const hargaPerPcs = hargaDusIsi6 / 6;
+
+  const cartTotalQty = useMemo(() => cart.reduce((sum, c) => sum + c.qty, 0), [cart]);
+  const remaining = targetQty - cartTotalQty;
+  const isComplete = remaining === 0;
+  const total = Math.round(hargaPerPcs * targetQty);
+
+  function handleCategoryChange(next, available) {
+    if (available === false || category === next) return;
+    if (cart.length > 0 && !window.confirm("Ganti kategori akan mengosongkan keranjang yang sedang diisi. Lanjutkan?")) return;
+    setCategory(next);
+  }
+
+  function changeTargetQty(delta) {
+    setTargetQty((q) => {
+      const next = q + delta;
+      if (next < MIN_QTY) return q;
+      if (next < cartTotalQty) return q; // tidak boleh lebih kecil dari isi keranjang saat ini
+      return next;
+    });
+  }
+
   function addToCart() {
-    if (!selVariant) return notify("Pilih varian donat dulu", "error");
+    if (!selVariant) return notify("Pilih varian dulu", "error");
+    if (category === "bomboloni" && !selFilling) return notify("Pilih filling dulu", "error");
+    if (remaining <= 0) return notify(`1 dus sudah penuh (${targetQty} pcs). Tambah jumlah dus dulu kalau mau lebih.`, "error");
     const variant = variants.find((v) => v.id === selVariant);
-    const glaze = glazes.find((g) => g.id === selGlaze);
-    const topping = toppings.find((t) => t.id === selTopping);
-    const hargaSatuan = (variant?.price || 0) + (glaze?.extraPrice || 0) + (topping?.extraPrice || 0);
+    const addQty = Math.min(qty, remaining);
+    let details;
+    if (category === "donat") {
+      const glaze = glazes.find((g) => g.id === selGlaze);
+      const topping = toppings.find((t) => t.id === selTopping);
+      details = [glaze?.name || "Tanpa glaze", topping?.name || "Tanpa topping"];
+    } else {
+      const filling = fillings.find((f) => f.id === selFilling);
+      details = [filling?.name || ""];
+    }
     setCart((prev) => [
       ...prev,
-      {
-        id: generateId(),
-        variantName: variant?.name || "",
-        glazeName: glaze?.name || "Tanpa glaze",
-        toppingName: topping?.name || "Tanpa topping",
-        qty,
-        hargaSatuan,
-        subtotal: hargaSatuan * qty,
-      },
+      { id: generateId(), variantName: variant?.name || "", details, qty: addQty },
     ]);
-    setSelVariant(""); setSelGlaze(""); setSelTopping(""); setQty(1);
+    setSelVariant(""); setSelGlaze(""); setSelTopping(""); setSelFilling(""); setQty(1);
   }
 
   function removeFromCart(id) {
     setCart((prev) => prev.filter((c) => c.id !== id));
   }
 
-  const total = useMemo(() => cart.reduce((sum, c) => sum + c.subtotal, 0), [cart]);
-
   async function submitOrder() {
-    if (cart.length === 0) return notify("Keranjang masih kosong", "error");
+    if (!isComplete) return notify(`Lengkapi ${remaining} pcs lagi dulu`, "error");
     if (!customerName.trim()) return notify("Nama pemesan harus diisi", "error");
+
+    const labelKategori = category === "donat" ? "Donat" : "Bomboloni";
+    let msg = `Halo ${NAMA_TOKO}, saya ingin pesan ${labelKategori} (1 dus isi ${targetQty}):\n\n`;
+    cart.forEach((c, i) => {
+      msg += `${i + 1}. ${c.variantName} - ${c.details.join(", ")} (x${c.qty})\n`;
+    });
+    msg += `\nTotal: ${formatRupiah(total)}\n\nAtas nama: ${customerName.trim()}`;
+    if (customerPhone.trim()) msg += `\nNo. HP: ${customerPhone.trim()}`;
+    if (note.trim()) msg += `\nCatatan: ${note.trim()}`;
+
+    // Buka WhatsApp SEBELUM proses async (await) apa pun, supaya browser (terutama
+    // Safari/iPhone) tidak menganggap ini popup dan memblokirnya.
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
+
     setSubmitting(true);
     try {
       await db.collection("orders").add({
+        category,
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
         note: note.trim(),
+        boxQty: targetQty,
         items: cart,
         total,
         status: "baru",
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       });
-
-      let msg = `Halo ${NAMA_TOKO}, saya ingin pesan:\n\n`;
-      cart.forEach((c, i) => {
-        msg += `${i + 1}. Donat ${c.variantName} - ${c.glazeName}, ${c.toppingName} (x${c.qty}) = ${formatRupiah(c.subtotal)}\n`;
-      });
-      msg += `\nTotal: ${formatRupiah(total)}\n\nAtas nama: ${customerName.trim()}`;
-      if (customerPhone.trim()) msg += `\nNo. HP: ${customerPhone.trim()}`;
-      if (note.trim()) msg += `\nCatatan: ${note.trim()}`;
-
-      window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
-
-      setCart([]); setCustomerName(""); setCustomerPhone(""); setNote("");
+      setCart([]); setTargetQty(MIN_QTY); setCustomerName(""); setCustomerPhone(""); setNote("");
       notify("Pesanan tersimpan, lanjutkan di WhatsApp yang baru terbuka", "success");
     } catch (err) {
       console.error(err);
-      notify("Gagal menyimpan pesanan: " + err.message, "error");
+      notify("Chat WhatsApp sudah terbuka, tapi pesanan gagal tersimpan di sistem kami: " + err.message, "error");
     } finally {
       setSubmitting(false);
     }
   }
 
-  if (loading) return <Spinner />;
-
   return (
     <div className="max-w-md mx-auto px-5 py-6 space-y-5">
-      <div className="bg-paper border border-kraft rounded-2xl p-5 space-y-3.5">
-        <h2 className="font-display text-xl">Tambah Pesanan</h2>
+      <BrandStrip />
 
-        <div>
-          <label className="text-sm text-chocosoft">Varian donat</label>
-          <select value={selVariant} onChange={(e) => setSelVariant(e.target.value)} className="w-full border border-kraft rounded-xl p-2.5 mt-1 bg-white">
-            <option value="">Pilih varian</option>
-            {variants.map((v) => (
-              <option key={v.id} value={v.id}>{v.name} — {formatRupiah(v.price)}</option>
-            ))}
-          </select>
-          {variants.length === 0 && <p className="text-xs text-raspberry mt-1">Belum ada varian donat. Tambahkan lewat menu Admin.</p>}
-        </div>
-
-        <div>
-          <label className="text-sm text-chocosoft">Glaze</label>
-          <select value={selGlaze} onChange={(e) => setSelGlaze(e.target.value)} className="w-full border border-kraft rounded-xl p-2.5 mt-1 bg-white">
-            <option value="">Tanpa glaze</option>
-            {glazes.map((g) => (
-              <option key={g.id} value={g.id}>{g.name}{g.extraPrice ? ` (+${formatRupiah(g.extraPrice)})` : ""}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="text-sm text-chocosoft">Topping</label>
-          <select value={selTopping} onChange={(e) => setSelTopping(e.target.value)} className="w-full border border-kraft rounded-xl p-2.5 mt-1 bg-white">
-            <option value="">Tanpa topping</option>
-            {toppings.map((t) => (
-              <option key={t.id} value={t.id}>{t.name}{t.extraPrice ? ` (+${formatRupiah(t.extraPrice)})` : ""}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="text-sm text-chocosoft">Jumlah</label>
-          <input
-            type="number" min="1" value={qty}
-            onChange={(e) => setQty(Math.max(1, parseInt(e.target.value) || 1))}
-            className="w-full border border-kraft rounded-xl p-2.5 mt-1 bg-white"
-          />
-        </div>
-
-        <button onClick={addToCart} className="w-full bg-raspberry hover:bg-raspberrydark text-white rounded-full py-3 font-semibold transition">
-          Tambah ke Keranjang
-        </button>
-      </div>
-
-      {cart.length > 0 && (
-        <div className="bg-choco text-cream rounded-2xl p-5">
-          <h2 className="font-display text-xl mb-1">Keranjang</h2>
-          {cart.map((c) => (
-            <div key={c.id} className="flex justify-between items-start py-3 border-b border-cream/10 text-sm">
-              <div>
-                <p className="font-medium">{c.variantName} <span className="text-cream/50">×{c.qty}</span></p>
-                <p className="text-cream/50 text-xs mt-0.5">{c.glazeName}, {c.toppingName}</p>
-              </div>
-              <div className="flex items-center gap-3 shrink-0">
-                <span>{formatRupiah(c.subtotal)}</span>
-                <button onClick={() => removeFromCart(c.id)} className="text-cream/40 hover:text-raspberry text-xs">Hapus</button>
-              </div>
-            </div>
-          ))}
-          <div className="flex justify-between items-center pt-4">
-            <span className="font-display text-lg">Total</span>
-            <span className="font-display text-lg text-butter">{formatRupiah(total)}</span>
-          </div>
+      {info.text && (
+        <div className="bg-gold/10 border border-gold/30 rounded-2xl p-4 text-sm whitespace-pre-line">
+          {info.text}
         </div>
       )}
 
-      {cart.length > 0 && (
-        <div className="bg-paper border border-kraft rounded-2xl p-5 space-y-3">
-          <h2 className="font-display text-xl">Data Pemesan</h2>
-          <input placeholder="Nama pemesan" value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="w-full border border-kraft rounded-xl p-2.5 bg-white" />
-          <input placeholder="No. HP (opsional)" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} className="w-full border border-kraft rounded-xl p-2.5 bg-white" />
-          <textarea placeholder="Catatan (opsional)" value={note} onChange={(e) => setNote(e.target.value)} rows="2" className="w-full border border-kraft rounded-xl p-2.5 bg-white" />
-          <button onClick={submitOrder} disabled={submitting} className="w-full bg-raspberry hover:bg-raspberrydark text-white rounded-full py-3.5 font-semibold transition disabled:opacity-50">
-            {submitting ? "Memproses..." : "Pesan via WhatsApp"}
+      <div className="flex justify-center">
+        <div className="flex gap-1 bg-choco/10 rounded-full p-1">
+          <button
+            onClick={() => handleCategoryChange("donat", info.donatAvailable !== false)}
+            disabled={info.donatAvailable === false}
+            className={`px-5 py-2 rounded-full text-sm font-medium transition disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold ${category === "donat" ? "bg-choco text-cream" : "text-chocosoft"}`}
+          >
+            Donat{info.donatAvailable === false ? " (Tutup)" : ""}
+          </button>
+          <button
+            onClick={() => handleCategoryChange("bomboloni", info.bombolomiAvailable !== false)}
+            disabled={info.bombolomiAvailable === false}
+            className={`px-5 py-2 rounded-full text-sm font-medium transition disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold ${category === "bomboloni" ? "bg-choco text-cream" : "text-chocosoft"}`}
+          >
+            Bomboloni{info.bombolomiAvailable === false ? " (Tutup)" : ""}
           </button>
         </div>
+      </div>
+
+      {loadingVariants ? (
+        <Spinner />
+      ) : !categoryAvailable ? (
+        <EmptyState text={`${category === "donat" ? "Donat" : "Bomboloni"} sedang tidak menerima pesanan.`} />
+      ) : hargaDusIsi6 <= 0 ? (
+        <EmptyState text={`Harga 1 dus ${category === "donat" ? "Donat" : "Bomboloni"} belum diatur admin.`} />
+      ) : (
+        <>
+          <div className="bg-paper border border-kraft rounded-2xl p-5 text-center">
+            <p className="text-sm text-chocosoft">Jumlah dalam 1 pesanan</p>
+            <p className="text-xs text-chocosoft/60 mt-0.5">Minimal {MIN_QTY} pcs, kelipatan {QTY_STEP} — {formatRupiah(hargaDusIsi6)}/dus isi 6</p>
+            <div className="flex items-center justify-center gap-5 pt-3">
+              <button
+                onClick={() => changeTargetQty(-QTY_STEP)}
+                disabled={targetQty <= MIN_QTY || targetQty - QTY_STEP < cartTotalQty}
+                className="w-9 h-9 rounded-full bg-kraft/50 text-choco font-bold text-lg disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+              >
+                −
+              </button>
+              <span className="font-display text-2xl w-20">{targetQty} pcs</span>
+              <button
+                onClick={() => changeTargetQty(QTY_STEP)}
+                className="w-9 h-9 rounded-full bg-kraft/50 text-choco font-bold text-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-paper border border-kraft rounded-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-xl">Pilih {category === "donat" ? "Donat" : "Bomboloni"}</h2>
+              <span className="text-xs text-chocosoft bg-kraft/40 rounded-full px-2.5 py-1 shrink-0">{cartTotalQty}/{targetQty} pcs</span>
+            </div>
+
+            <OptionChips
+              label="Varian"
+              options={variants}
+              value={selVariant}
+              onChange={setSelVariant}
+              emptyText="Varian belum diisi admin."
+            />
+
+            {category === "donat" ? (
+              <>
+                <OptionChips label="Glaze" options={glazes} value={selGlaze} onChange={setSelGlaze} allowNone noneLabel="Tanpa glaze" />
+                <OptionChips label="Topping" options={toppings} value={selTopping} onChange={setSelTopping} allowNone noneLabel="Tanpa topping" />
+              </>
+            ) : (
+              <OptionChips
+                label="Filling"
+                options={fillings}
+                value={selFilling}
+                onChange={setSelFilling}
+                emptyText="Filling belum diisi admin."
+              />
+            )}
+
+            <div>
+              <label className="text-sm text-chocosoft">Jumlah untuk kombinasi ini</label>
+              <input
+                type="number" min="1" max={Math.max(remaining, 1)} value={qty}
+                onChange={(e) => setQty(Math.max(1, Math.min(remaining || 1, parseInt(e.target.value) || 1)))}
+                className="w-full border border-kraft rounded-xl p-2.5 mt-1 bg-white outline-none focus-visible:ring-2 focus-visible:ring-gold"
+              />
+            </div>
+
+            <button
+              onClick={addToCart}
+              disabled={remaining <= 0}
+              className="w-full bg-gradient-to-r from-gold to-rust hover:brightness-105 text-white rounded-full py-3 font-semibold transition disabled:opacity-40 disabled:grayscale focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2"
+            >
+              {remaining <= 0 ? "1 dus sudah penuh" : "Tambah ke Keranjang"}
+            </button>
+          </div>
+
+          {cart.length > 0 && (
+            <div className="bg-choco text-cream rounded-2xl p-5">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="font-display text-xl">Keranjang</h2>
+                <span className="text-xs text-cream/60 shrink-0">{cartTotalQty}/{targetQty} pcs</span>
+              </div>
+              {cart.map((c) => (
+                <div key={c.id} className="flex justify-between items-center py-3 border-b border-cream/10 text-sm">
+                  <div>
+                    <p className="font-medium">{c.variantName} <span className="text-cream/50">×{c.qty}</span></p>
+                    <p className="text-cream/50 text-xs mt-0.5">{c.details.join(", ")}</p>
+                  </div>
+                  <button onClick={() => removeFromCart(c.id)} className="text-cream/40 hover:text-rust text-xs shrink-0">Hapus</button>
+                </div>
+              ))}
+              <div className="flex justify-between items-center pt-4">
+                <span className="font-display text-lg">Total</span>
+                <span className="font-display text-lg text-gold">{formatRupiah(total)}</span>
+              </div>
+            </div>
+          )}
+
+          {cart.length > 0 && (
+            <div className="bg-paper border border-kraft rounded-2xl p-5 space-y-3">
+              <h2 className="font-display text-xl">Data Pemesan</h2>
+              <input placeholder="Nama pemesan" value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="w-full border border-kraft rounded-xl p-2.5 bg-white outline-none focus-visible:ring-2 focus-visible:ring-gold" />
+              <input placeholder="No. HP (opsional)" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} className="w-full border border-kraft rounded-xl p-2.5 bg-white outline-none focus-visible:ring-2 focus-visible:ring-gold" />
+              <textarea placeholder="Catatan (opsional)" value={note} onChange={(e) => setNote(e.target.value)} rows="2" className="w-full border border-kraft rounded-xl p-2.5 bg-white outline-none focus-visible:ring-2 focus-visible:ring-gold" />
+              <button
+                onClick={submitOrder}
+                disabled={submitting || !isComplete}
+                className="w-full bg-gradient-to-r from-gold to-rust hover:brightness-105 text-white rounded-full py-3.5 font-semibold transition disabled:opacity-40 disabled:grayscale focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2"
+              >
+                {!isComplete ? `Lengkapi ${remaining} pcs lagi` : submitting ? "Memproses..." : "Pesan via WhatsApp"}
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -372,12 +565,22 @@ function AdminLogin({ notify }) {
 
   return (
     <div className="max-w-sm mx-auto px-5 py-10">
+      <div className="flex flex-col items-center text-center mb-6">
+        <img
+          src={LOGO_SRC}
+          alt={NAMA_TOKO}
+          className="w-20 h-20 rounded-full mb-3 object-cover"
+          onError={(e) => { e.target.style.display = "none"; }}
+        />
+        <p className="font-display text-xl">{NAMA_TOKO}</p>
+        <p className="text-sm text-chocosoft">Panel Admin</p>
+      </div>
       <div className="bg-paper border border-kraft rounded-2xl p-6">
         <h2 className="font-display text-xl mb-4">Masuk Sebagai Admin</h2>
         <form onSubmit={handleLogin} className="space-y-3">
-          <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full border border-kraft rounded-xl p-2.5 bg-white" />
-          <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full border border-kraft rounded-xl p-2.5 bg-white" />
-          <button type="submit" disabled={loading} className="w-full bg-raspberry hover:bg-raspberrydark text-white rounded-full py-3 font-semibold transition disabled:opacity-50">
+          <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full border border-kraft rounded-xl p-2.5 bg-white outline-none focus-visible:ring-2 focus-visible:ring-gold" />
+          <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full border border-kraft rounded-xl p-2.5 bg-white outline-none focus-visible:ring-2 focus-visible:ring-gold" />
+          <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-gold to-rust hover:brightness-105 text-white rounded-full py-3 font-semibold transition disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2">
             {loading ? "Memuat..." : "Masuk"}
           </button>
         </form>
@@ -388,13 +591,15 @@ function AdminLogin({ notify }) {
 }
 
 /* =========================================================
-   ADMIN — PENGELOLA DAFTAR (dipakai untuk Glaze & Topping)
+   ADMIN — DAFTAR NAMA (dipakai untuk Varian Donat, Varian
+   Bomboloni, Glaze, Topping, dan Filling — cuma nama, tanpa
+   harga. showAvailability menambahkan toggle tersedia/habis,
+   dipakai khusus untuk kedua daftar Varian.)
    ========================================================= */
-function ListManager({ collectionName, title, notify }) {
+function NameListManager({ collectionName, title, notify, showAvailability }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState("");
-  const [newExtra, setNewExtra] = useState("");
 
   useEffect(() => {
     const unsub = db.collection(collectionName).orderBy("name").onSnapshot((snap) => {
@@ -406,13 +611,19 @@ function ListManager({ collectionName, title, notify }) {
 
   async function addItem() {
     if (!newName.trim()) return notify(`Isi nama ${title.toLowerCase()} dulu`, "error");
-    await db.collection(collectionName).add({ name: newName.trim(), extraPrice: Number(newExtra) || 0 });
-    setNewName(""); setNewExtra("");
+    const data = { name: newName.trim() };
+    if (showAvailability) data.available = true;
+    await db.collection(collectionName).add(data);
+    setNewName("");
     notify(`${title} ditambahkan`, "success");
   }
 
-  async function updateItem(id, field, value) {
-    await db.collection(collectionName).doc(id).update({ [field]: field === "extraPrice" ? (Number(value) || 0) : value });
+  async function updateItem(id, name) {
+    await db.collection(collectionName).doc(id).update({ name });
+  }
+
+  async function toggleAvailable(id, available) {
+    await db.collection(collectionName).doc(id).update({ available: !available });
   }
 
   async function deleteItem(id) {
@@ -431,83 +642,128 @@ function ListManager({ collectionName, title, notify }) {
           placeholder={`Nama ${title.toLowerCase()}`} value={newName}
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && addItem()}
-          className="flex-1 border border-kraft rounded-xl p-2 bg-white text-sm"
+          className="flex-1 border border-kraft rounded-xl p-2 bg-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-gold"
         />
-        <input placeholder="Tambahan harga" type="number" min="0" value={newExtra} onChange={(e) => setNewExtra(e.target.value)} className="w-28 border border-kraft rounded-xl p-2 bg-white text-sm" />
-        <button onClick={addItem} className="bg-raspberry hover:bg-raspberrydark text-white rounded-xl px-3.5 text-sm font-medium">Tambah</button>
+        <button onClick={addItem} className="bg-gold hover:bg-golddark text-white rounded-xl px-3.5 text-sm font-medium transition">Tambah</button>
       </div>
       {items.length === 0 && <EmptyState text={`Belum ada ${title.toLowerCase()}`} />}
       <div className="divide-y divide-kraft">
         {items.map((it) => (
           <div key={it.id} className="flex items-center gap-2 py-2.5">
-            <input defaultValue={it.name} onBlur={(e) => updateItem(it.id, "name", e.target.value)} className="flex-1 border border-kraft rounded-lg p-1.5 text-sm bg-white" />
-            <input defaultValue={it.extraPrice} type="number" min="0" onBlur={(e) => updateItem(it.id, "extraPrice", e.target.value)} className="w-24 border border-kraft rounded-lg p-1.5 text-sm bg-white" />
-            <button onClick={() => deleteItem(it.id)} className="text-raspberry text-xs px-2 shrink-0">Hapus</button>
+            {showAvailability && (
+              <input
+                type="checkbox" checked={it.available !== false}
+                onChange={() => toggleAvailable(it.id, it.available !== false)}
+                title="Tersedia" className="w-4 h-4 accent-gold shrink-0"
+              />
+            )}
+            <input defaultValue={it.name} onBlur={(e) => updateItem(it.id, e.target.value)} className="flex-1 border border-kraft rounded-lg p-1.5 text-sm bg-white outline-none focus-visible:ring-2 focus-visible:ring-gold" />
+            <button onClick={() => deleteItem(it.id)} className="text-rust text-xs px-2 shrink-0">Hapus</button>
           </div>
         ))}
+      </div>
+      {showAvailability && <p className="text-xs text-chocosoft/50">Centang = tersedia. Hilangkan centang untuk sementara sembunyikan dari pilihan pelanggan.</p>}
+    </div>
+  );
+}
+
+/* =========================================================
+   ADMIN — HARGA (flat per dus isi 6, sudah termasuk semua
+   pilihan glaze/topping/filling)
+   ========================================================= */
+function HargaManager({ notify }) {
+  const [harga, setHarga] = useState({ donatDusIsi6: "", bombolomiDusIsi6: "" });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsub = db.collection("settings").doc("harga").onSnapshot((doc) => {
+      if (doc.exists) setHarga(doc.data());
+      setLoading(false);
+    });
+    return unsub;
+  }, []);
+
+  async function saveHarga(field, value) {
+    await db.collection("settings").doc("harga").set({ [field]: Number(value) || 0 }, { merge: true });
+    notify("Harga disimpan", "success");
+  }
+
+  if (loading) return <Spinner />;
+
+  return (
+    <div className="bg-paper border border-kraft rounded-2xl p-4 space-y-4">
+      <h3 className="font-semibold">Harga per Dus (isi 6)</h3>
+      <p className="text-xs text-chocosoft/60 -mt-2">Sudah termasuk semua pilihan glaze/topping/filling. Harga untuk 9/12/15 pcs dihitung otomatis proporsional dari sini.</p>
+      <div>
+        <label className="text-sm text-chocosoft">Donat</label>
+        <input
+          type="number" min="0" defaultValue={harga.donatDusIsi6}
+          onBlur={(e) => saveHarga("donatDusIsi6", e.target.value)}
+          className="w-full border border-kraft rounded-xl p-2.5 mt-1 bg-white outline-none focus-visible:ring-2 focus-visible:ring-gold"
+        />
+      </div>
+      <div>
+        <label className="text-sm text-chocosoft">Bomboloni</label>
+        <input
+          type="number" min="0" defaultValue={harga.bombolomiDusIsi6}
+          onBlur={(e) => saveHarga("bombolomiDusIsi6", e.target.value)}
+          className="w-full border border-kraft rounded-xl p-2.5 mt-1 bg-white outline-none focus-visible:ring-2 focus-visible:ring-gold"
+        />
       </div>
     </div>
   );
 }
 
 /* =========================================================
-   ADMIN — HARGA VARIAN
+   ADMIN — INFO TOKO (teks info + buka/tutup kategori)
    ========================================================= */
-function PricingManager({ notify }) {
-  const [variants, setVariants] = useState([]);
+function InfoManager({ notify }) {
+  const [info, setInfo] = useState({ text: "", donatAvailable: true, bombolomiAvailable: true });
   const [loading, setLoading] = useState(true);
-  const [newName, setNewName] = useState("");
-  const [newPrice, setNewPrice] = useState("");
 
   useEffect(() => {
-    const unsub = db.collection("variants").orderBy("name").onSnapshot((snap) => {
-      setVariants(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    const unsub = db.collection("settings").doc("info").onSnapshot((doc) => {
+      setInfo(doc.exists ? { text: "", donatAvailable: true, bombolomiAvailable: true, ...doc.data() } : { text: "", donatAvailable: true, bombolomiAvailable: true });
       setLoading(false);
     });
     return unsub;
   }, []);
 
-  async function addVariant() {
-    if (!newName.trim() || newPrice === "") return notify("Isi nama dan harga varian", "error");
-    await db.collection("variants").add({ name: newName.trim(), price: Number(newPrice) || 0 });
-    setNewName(""); setNewPrice("");
-    notify("Varian ditambahkan", "success");
+  async function saveText(value) {
+    await db.collection("settings").doc("info").set({ text: value }, { merge: true });
+    notify("Info disimpan", "success");
   }
 
-  async function updateField(id, field, value) {
-    await db.collection("variants").doc(id).update({ [field]: field === "price" ? (Number(value) || 0) : value });
-  }
-
-  async function deleteVariant(id) {
-    if (!window.confirm("Hapus varian ini?")) return;
-    await db.collection("variants").doc(id).delete();
-    notify("Varian dihapus", "success");
+  async function toggleCategory(field, current) {
+    await db.collection("settings").doc("info").set({ [field]: !current }, { merge: true });
+    notify("Status kategori diperbarui", "success");
   }
 
   if (loading) return <Spinner />;
 
   return (
-    <div className="bg-paper border border-kraft rounded-2xl p-4 space-y-3">
-      <h3 className="font-semibold">Varian & Harga Donat</h3>
-      <div className="flex gap-2">
-        <input
-          placeholder="Nama varian (mis. Ori)" value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && addVariant()}
-          className="flex-1 border border-kraft rounded-xl p-2 bg-white text-sm"
+    <div className="space-y-4">
+      <div className="bg-paper border border-kraft rounded-2xl p-4 space-y-3">
+        <h3 className="font-semibold">Info Toko</h3>
+        <p className="text-xs text-chocosoft/60 -mt-2">Tampil di paling atas halaman Pesan. Contoh: jam buka, hari libur, catatan stok.</p>
+        <textarea
+          defaultValue={info.text}
+          onBlur={(e) => saveText(e.target.value)}
+          rows="4"
+          placeholder={"Buka Senin\u2013Sabtu, 08.00\u201317.00"}
+          className="w-full border border-kraft rounded-xl p-2.5 bg-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-gold"
         />
-        <input placeholder="Harga" type="number" min="0" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} className="w-28 border border-kraft rounded-xl p-2 bg-white text-sm" />
-        <button onClick={addVariant} className="bg-raspberry hover:bg-raspberrydark text-white rounded-xl px-3.5 text-sm font-medium">Tambah</button>
       </div>
-      {variants.length === 0 && <EmptyState text="Belum ada varian donat" />}
-      <div className="divide-y divide-kraft">
-        {variants.map((v) => (
-          <div key={v.id} className="flex items-center gap-2 py-2.5">
-            <input defaultValue={v.name} onBlur={(e) => updateField(v.id, "name", e.target.value)} className="flex-1 border border-kraft rounded-lg p-1.5 text-sm bg-white" />
-            <input defaultValue={v.price} type="number" min="0" onBlur={(e) => updateField(v.id, "price", e.target.value)} className="w-28 border border-kraft rounded-lg p-1.5 text-sm bg-white" />
-            <button onClick={() => deleteVariant(v.id)} className="text-raspberry text-xs px-2 shrink-0">Hapus</button>
-          </div>
-        ))}
+      <div className="bg-paper border border-kraft rounded-2xl p-4 space-y-3">
+        <h3 className="font-semibold">Buka/Tutup Kategori</h3>
+        <label className="flex items-center gap-3 py-1 cursor-pointer">
+          <input type="checkbox" checked={info.donatAvailable !== false} onChange={() => toggleCategory("donatAvailable", info.donatAvailable !== false)} className="w-4 h-4 accent-gold" />
+          <span className="text-sm">Donat dibuka untuk pesanan</span>
+        </label>
+        <label className="flex items-center gap-3 py-1 cursor-pointer">
+          <input type="checkbox" checked={info.bombolomiAvailable !== false} onChange={() => toggleCategory("bombolomiAvailable", info.bombolomiAvailable !== false)} className="w-4 h-4 accent-gold" />
+          <span className="text-sm">Bomboloni dibuka untuk pesanan</span>
+        </label>
       </div>
     </div>
   );
@@ -563,10 +819,10 @@ function RestockManager({ notify }) {
             placeholder="Nama barang (mis. Tepung terigu)" value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addItem()}
-            className="flex-1 border border-kraft rounded-xl p-2 bg-white text-sm"
+            className="flex-1 border border-kraft rounded-xl p-2 bg-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-gold"
           />
-          <input placeholder="Jumlah" value={newQty} onChange={(e) => setNewQty(e.target.value)} className="w-24 border border-kraft rounded-xl p-2 bg-white text-sm" />
-          <button onClick={addItem} className="bg-raspberry hover:bg-raspberrydark text-white rounded-xl px-3.5 text-sm font-medium">Tambah</button>
+          <input placeholder="Jumlah" value={newQty} onChange={(e) => setNewQty(e.target.value)} className="w-24 border border-kraft rounded-xl p-2 bg-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-gold" />
+          <button onClick={addItem} className="bg-gold hover:bg-golddark text-white rounded-xl px-3.5 text-sm font-medium transition">Tambah</button>
         </div>
       </div>
 
@@ -576,9 +832,9 @@ function RestockManager({ notify }) {
         <div className="divide-y divide-kraft">
           {belum.map((it) => (
             <label key={it.id} className="flex items-center gap-3 py-2.5 cursor-pointer">
-              <input type="checkbox" checked={it.done} onChange={() => toggleDone(it.id, it.done)} className="w-4 h-4 accent-raspberry" />
+              <input type="checkbox" checked={it.done} onChange={() => toggleDone(it.id, it.done)} className="w-4 h-4 accent-gold" />
               <span className="flex-1 text-sm">{it.name}{it.qty && ` — ${it.qty}`}</span>
-              <button onClick={(e) => { e.preventDefault(); deleteItem(it.id); }} className="text-raspberry text-xs px-2">Hapus</button>
+              <button onClick={(e) => { e.preventDefault(); deleteItem(it.id); }} className="text-rust text-xs px-2">Hapus</button>
             </label>
           ))}
         </div>
@@ -590,9 +846,9 @@ function RestockManager({ notify }) {
           <div className="divide-y divide-kraft">
             {selesai.map((it) => (
               <label key={it.id} className="flex items-center gap-3 py-2.5 cursor-pointer opacity-50">
-                <input type="checkbox" checked={it.done} onChange={() => toggleDone(it.id, it.done)} className="w-4 h-4 accent-raspberry" />
+                <input type="checkbox" checked={it.done} onChange={() => toggleDone(it.id, it.done)} className="w-4 h-4 accent-gold" />
                 <span className="flex-1 text-sm line-through">{it.name}{it.qty && ` — ${it.qty}`}</span>
-                <button onClick={(e) => { e.preventDefault(); deleteItem(it.id); }} className="text-raspberry text-xs px-2">Hapus</button>
+                <button onClick={(e) => { e.preventDefault(); deleteItem(it.id); }} className="text-rust text-xs px-2">Hapus</button>
               </label>
             ))}
           </div>
@@ -603,13 +859,161 @@ function RestockManager({ notify }) {
 }
 
 /* =========================================================
+   ADMIN — PESANAN (baru: menampilkan order yang masuk dari
+   pelanggan, sesuai izin yang sudah ada di firestore.rules)
+   ========================================================= */
+const ORDER_STATUSES = [
+  { key: "baru", label: "Baru" },
+  { key: "diproses", label: "Diproses" },
+  { key: "selesai", label: "Selesai" },
+];
+
+function statusBadgeClass(status) {
+  if (status === "selesai") return "bg-green-100 text-green-700";
+  if (status === "diproses") return "bg-gold/20 text-golddark";
+  return "bg-rust/10 text-rust";
+}
+
+function OrderCard({ order, notify }) {
+  async function setStatus(next) {
+    try {
+      await db.collection("orders").doc(order.id).update({ status: next });
+    } catch (err) {
+      notify("Gagal mengubah status: " + err.message, "error");
+    }
+  }
+
+  async function hapus() {
+    if (!window.confirm("Hapus pesanan ini dari daftar?")) return;
+    await db.collection("orders").doc(order.id).delete();
+    notify("Pesanan dihapus", "success");
+  }
+
+  const waLink = toWaLink(
+    order.customerPhone,
+    `Halo ${order.customerName}, terkait pesanan ${order.category === "donat" ? "Donat" : "Bomboloni"} Anda di ${NAMA_TOKO}...`
+  );
+  const statusInfo = ORDER_STATUSES.find((s) => s.key === order.status);
+
+  return (
+    <div className="bg-paper border border-kraft rounded-2xl p-4 space-y-2.5">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="font-semibold text-choco">{order.customerName}</p>
+          <p className="text-xs text-chocosoft/60">{formatWaktu(order.createdAt)} · {order.category === "donat" ? "Donat" : "Bomboloni"} · {order.boxQty} pcs</p>
+        </div>
+        <span className={`text-xs px-2.5 py-1 rounded-full font-medium shrink-0 ${statusBadgeClass(order.status)}`}>
+          {statusInfo ? statusInfo.label : "Baru"}
+        </span>
+      </div>
+
+      <div className="text-sm text-chocosoft space-y-0.5">
+        {(order.items || []).map((it, i) => (
+          <p key={it.id || i}>{it.variantName} — {(it.details || []).join(", ")} <span className="text-chocosoft/50">×{it.qty}</span></p>
+        ))}
+      </div>
+
+      {order.note && <p className="text-xs text-chocosoft bg-kraft/30 rounded-lg px-2.5 py-1.5">Catatan: {order.note}</p>}
+
+      <div className="flex items-center justify-between pt-1">
+        <span className="font-display text-base text-rust">{formatRupiah(order.total)}</span>
+        {waLink && (
+          <a href={waLink} target="_blank" rel="noreferrer" className="text-xs text-green-700 underline underline-offset-2">Chat WA pelanggan</a>
+        )}
+      </div>
+
+      <div className="flex items-center gap-1.5 pt-1.5 border-t border-kraft/60">
+        {ORDER_STATUSES.map((s) => (
+          <button
+            key={s.key}
+            onClick={() => setStatus(s.key)}
+            className={`flex-1 text-xs py-1.5 rounded-full font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold ${order.status === s.key ? "bg-choco text-cream" : "bg-kraft/30 text-chocosoft hover:bg-kraft/50"}`}
+          >
+            {s.label}
+          </button>
+        ))}
+        <button onClick={hapus} className="text-xs text-rust px-2 shrink-0">Hapus</button>
+      </div>
+    </div>
+  );
+}
+
+function OrdersManager({ notify }) {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("aktif"); // aktif | semua | baru | diproses | selesai
+
+  useEffect(() => {
+    const unsub = db.collection("orders").orderBy("createdAt", "desc").limit(100).onSnapshot(
+      (snap) => { setOrders(snap.docs.map((d) => ({ id: d.id, ...d.data() }))); setLoading(false); },
+      (err) => { console.error("orders:", err); setLoading(false); }
+    );
+    return unsub;
+  }, []);
+
+  if (loading) return <Spinner />;
+
+  const counts = {
+    baru: orders.filter((o) => !o.status || o.status === "baru").length,
+    diproses: orders.filter((o) => o.status === "diproses").length,
+    selesai: orders.filter((o) => o.status === "selesai").length,
+  };
+
+  const filtered = orders.filter((o) => {
+    if (filter === "semua") return true;
+    if (filter === "aktif") return o.status !== "selesai";
+    if (filter === "baru") return !o.status || o.status === "baru";
+    return o.status === filter;
+  });
+
+  const filterTabs = [
+    { key: "aktif", label: "Aktif" },
+    { key: "semua", label: `Semua (${orders.length})` },
+    { key: "baru", label: `Baru (${counts.baru})` },
+    { key: "diproses", label: `Diproses (${counts.diproses})` },
+    { key: "selesai", label: `Selesai (${counts.selesai})` },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-1.5 overflow-x-auto pb-1">
+        {filterTabs.map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setFilter(f.key)}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold ${filter === f.key ? "bg-choco text-cream" : "bg-kraft/40 text-chocosoft"}`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {orders.length === 100 && (
+        <p className="text-xs text-chocosoft/50 text-center">Menampilkan 100 pesanan terbaru. Riwayat lebih lama bisa dicek di Firebase Console.</p>
+      )}
+
+      {filtered.length === 0 ? (
+        <EmptyState text="Belum ada pesanan di kategori ini." />
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((o) => <OrderCard key={o.id} order={o} notify={notify} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* =========================================================
    ADMIN — HALAMAN UTAMA
    ========================================================= */
 function AdminPage({ notify }) {
-  const [tab, setTab] = useState("harga");
+  const [tab, setTab] = useState("pesanan");
   const tabs = [
+    { key: "pesanan", label: "Pesanan" },
     { key: "harga", label: "Harga" },
-    { key: "glaze", label: "Glaze & Topping" },
+    { key: "varian", label: "Varian" },
+    { key: "rasa", label: "Rasa & Isian" },
+    { key: "info", label: "Info" },
     { key: "restock", label: "Belanja" },
   ];
 
@@ -620,25 +1024,34 @@ function AdminPage({ notify }) {
         <button onClick={() => auth.signOut()} className="text-xs text-chocosoft underline">Keluar</button>
       </div>
 
-      <div className="flex gap-1 bg-kraft/40 rounded-full p-1">
+      <div className="flex gap-1 bg-kraft/40 rounded-full p-1 overflow-x-auto">
         {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`flex-1 py-2 rounded-full text-sm font-medium transition ${tab === t.key ? "bg-choco text-cream" : "text-chocosoft"}`}
+            className={`flex-1 py-2 px-2 rounded-full text-xs sm:text-sm font-medium transition whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold ${tab === t.key ? "bg-choco text-cream" : "text-chocosoft"}`}
           >
             {t.label}
           </button>
         ))}
       </div>
 
-      {tab === "harga" && <PricingManager notify={notify} />}
-      {tab === "glaze" && (
+      {tab === "pesanan" && <OrdersManager notify={notify} />}
+      {tab === "harga" && <HargaManager notify={notify} />}
+      {tab === "varian" && (
         <div className="space-y-4">
-          <ListManager collectionName="glazes" title="Glaze" notify={notify} />
-          <ListManager collectionName="toppings" title="Topping" notify={notify} />
+          <NameListManager collectionName="variants" title="Varian Donat" notify={notify} showAvailability />
+          <NameListManager collectionName="variantsBomboloni" title="Varian Bomboloni" notify={notify} showAvailability />
         </div>
       )}
+      {tab === "rasa" && (
+        <div className="space-y-4">
+          <NameListManager collectionName="glazes" title="Glaze (Donat)" notify={notify} />
+          <NameListManager collectionName="toppings" title="Topping (Donat)" notify={notify} />
+          <NameListManager collectionName="fillings" title="Filling (Bomboloni)" notify={notify} />
+        </div>
+      )}
+      {tab === "info" && <InfoManager notify={notify} />}
       {tab === "restock" && <RestockManager notify={notify} />}
     </div>
   );
