@@ -825,7 +825,7 @@
 
         <hr style="margin:22px 0;border:none;border-top:1px solid #e8d8c8;">
         <h2>🚀 Menu Paket Cepat (Isi 3 &amp; Isi 6)</h2>
-        <p style="font-size:13px;color:#888;margin-top:-10px;">Catatan: Paket Cepat saat ini khusus untuk Donat (Biasa/Kentang/Labu). Pelanggan yang pilih Bomboloni akan langsung ke mode racik isian manual.</p>
+        <p style="font-size:13px;color:#888;margin-top:-10px;">Buat paket untuk Donat atau Bomboloni (pilih tipenya di form). Pelanggan tinggal ketuk paketnya tanpa racik satu-satu, sesuai jenis yang mereka pilih.</p>
         <p style="font-size:14px;color:#666;">Buat beberapa pilihan paket rasa siap pakai. Pelanggan tinggal ketuk paketnya tanpa racik satu-satu. Boleh bikin lebih dari 1 pilihan per ukuran.</p>
 
         <div class="mgmt-grid">
@@ -845,15 +845,22 @@
         <div id="paket-form-section">
             <h3 id="paket-form-title" style="margin-top:0;">Tambah Paket</h3>
             <div class="form-group">
+                <label style="font-size:13px;">Paket untuk:</label>
+                <div style="display:flex;gap:8px;">
+                    <button type="button" id="btn-tipe-donat" class="hari-btn aktif" onclick="setTipePaketForm('donat')">🍩 Donat</button>
+                    <button type="button" id="btn-tipe-bomboloni" class="hari-btn" onclick="setTipePaketForm('bomboloni')">🧁 Bomboloni</button>
+                </div>
+            </div>
+            <div class="form-group">
                 <label style="font-size:13px;">Nama Paket:</label>
                 <input type="text" id="paket-form-nama" placeholder="Contoh: Paket Mix Favorit">
             </div>
             <div style="display:flex;gap:6px;align-items:flex-end;margin-bottom:10px;flex-wrap:wrap;">
                 <div style="flex:1;min-width:110px;">
-                    <label style="font-size:12px;">Glaze</label>
+                    <label style="font-size:12px;" id="paket-form-glaze-label">Glaze</label>
                     <select id="paket-form-glaze"></select>
                 </div>
-                <div style="flex:1;min-width:110px;">
+                <div style="flex:1;min-width:110px;" id="paket-form-topping-wrap">
                     <label style="font-size:12px;">Topping</label>
                     <select id="paket-form-topping"></select>
                 </div>
@@ -885,13 +892,12 @@
     // FIREBASE CONFIG — GANTI DENGAN MILIK ANDA
     // ============================================================
     const firebaseConfig = {
-        apiKey: "AIzaSyBDsQxKD1pjUCrDxgrnRMAKxqxTM6NQ5us",
-        authDomain: "order-donat.firebaseapp.com",
-        databaseURL: "https://order-donat-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "order-donat",
-        storageBucket: "order-donat.firebasestorage.app",
-        messagingSenderId: "551893041327",
-        appId: "1:551893041327:web:31e7a8f58ccf6d1ff8145a"
+        apiKey: "AIzaSyB09nTzwdWHejAI7N_FYH2MpmjLny-tBzc",
+        authDomain: "aan-bakery.firebaseapp.com",
+        projectId: "aan-bakery",
+        storageBucket: "aan-bakery.firebasestorage.app",
+        messagingSenderId: "443850717073",
+        appId: "1:443850717073:web:a39c93863bbabb397b8c30"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
@@ -951,6 +957,7 @@
     let adminPaketUkuran = null;            // '3' / '6' — form admin sedang terbuka untuk ukuran apa
     let adminPaketEditId = null;            // null = paket baru, isi id kalau sedang mengedit paket lama
     let adminPaketItems = [];               // draft rincian di form admin [{glaze,topping,qty}]
+    let paketFormTipe = 'donat';            // 'donat' | 'bomboloni' — tipe paket yang sedang dibuat/diedit di form admin
 
     // ---- Emoji & Color Maps ----
     const glazeStyles = {
@@ -1216,7 +1223,7 @@
         updateCartDisplay();
         updateComboPreview();
         terapkanTampilanJenis();
-        setModeRasa(isBomboloniAktif() ? 'manual' : 'paket');
+        setModeRasa('paket');
         setStep(2);
     }
 
@@ -1244,12 +1251,9 @@
         const bombol = isBomboloniAktif();
         const label       = document.getElementById('label-glaze-topping');
         const toppingGrup = document.getElementById('group-topping');
-        const modeRow     = document.getElementById('mode-toggle-row');
         if (label)       label.textContent = bombol ? 'Pilih Isian (Filling):' : 'Pilih Glaze (Lapisan):';
         if (toppingGrup) toppingGrup.style.display = bombol ? 'none' : 'block';
-        if (modeRow)     modeRow.style.display = bombol ? 'none' : 'flex';
         renderVisualCards();
-        if (bombol && modeRasa !== 'manual') setModeRasa('manual');
     }
 
     function renderVisualCards() {
@@ -1494,29 +1498,36 @@
 
         if (sisaDisp) sisaDisp.textContent = sisaKuota;
 
+        const tipeAktif = isBomboloniAktif() ? 'bomboloni' : 'donat';
+        const paket3Cocok = paketIsi3.filter(p => (p.tipe || 'donat') === tipeAktif);
+        const paket6Cocok = paketIsi6.filter(p => (p.tipe || 'donat') === tipeAktif);
+
         const buatCard = (pkt, ukuran) => {
             const aktif = paketDipilih && paketDipilih.ukuran === ukuran && paketDipilih.id === pkt.id;
-            const ringkas = pkt.items.map(it => `${it.qty}x ${escapeHtml(it.glaze)}+${escapeHtml(it.topping)}`).join(', ');
+            const ringkas = pkt.items.map(it => {
+                const adaTopping = it.topping && it.topping !== "-";
+                return `${it.qty}x ${escapeHtml(it.glaze)}${adaTopping ? '+' + escapeHtml(it.topping) : ''}`;
+            }).join(', ');
             return `<div class="paket-card${aktif ? ' active' : ''}" onclick="pilihPaketCustomer('${ukuran}','${pkt.id}')">
                 <span class="paket-card-nama">${escapeHtml(pkt.nama)}</span>
                 <span class="paket-card-ringkas">${ringkas}</span>
             </div>`;
         };
 
-        const tampil6 = sisaKuota >= 6 && paketIsi6.length > 0;
-        const tampil3 = sisaKuota >= 3 && paketIsi3.length > 0;
+        const tampil6 = sisaKuota >= 6 && paket6Cocok.length > 0;
+        const tampil3 = sisaKuota >= 3 && paket3Cocok.length > 0;
 
         wrap6.style.display = tampil6 ? "block" : "none";
-        if (tampil6) list6.innerHTML = paketIsi6.map(p => buatCard(p, '6')).join('');
+        if (tampil6) list6.innerHTML = paket6Cocok.map(p => buatCard(p, '6')).join('');
 
         wrap3.style.display = tampil3 ? "block" : "none";
-        if (tampil3) list3.innerHTML = paketIsi3.map(p => buatCard(p, '3')).join('');
+        if (tampil3) list3.innerHTML = paket3Cocok.map(p => buatCard(p, '3')).join('');
 
         if (kosongMsg) {
             if (tampil6 || tampil3 || sisaKuota <= 0) {
                 kosongMsg.style.display = "none";
-            } else if (paketIsi3.length === 0 && paketIsi6.length === 0) {
-                kosongMsg.textContent = 'Admin belum menambahkan paket cepat. Silakan pakai mode "Racik Sendiri" dulu ya 🙏';
+            } else if (paket3Cocok.length === 0 && paket6Cocok.length === 0) {
+                kosongMsg.textContent = 'Admin belum menambahkan paket cepat untuk jenis ini. Silakan pakai mode "Racik Sendiri" dulu ya 🙏';
                 kosongMsg.style.display = "block";
             } else {
                 kosongMsg.textContent = `Sisa ${sisaKuota} pcs belum cukup untuk paket yang tersedia. Silakan lengkapi lewat mode "Racik Sendiri".`;
@@ -1524,9 +1535,13 @@
             }
         }
 
-        if (paketDipilih && sisaKuota < parseInt(paketDipilih.ukuran)) {
-            paketDipilih = null;
-            paketJumlah = 1;
+        if (paketDipilih) {
+            const listCek = paketDipilih.ukuran === '6' ? paket6Cocok : paket3Cocok;
+            const masihCocok = listCek.some(p => p.id === paketDipilih.id);
+            if (!masihCocok || sisaKuota < parseInt(paketDipilih.ukuran)) {
+                paketDipilih = null;
+                paketJumlah = 1;
+            }
         }
         renderPaketPreview();
     }
@@ -1574,8 +1589,10 @@
         const labelJumlah = paketJumlah > 1 ? ` × ${paketJumlah}` : '';
         document.getElementById("paket-preview-nama").textContent = "📦 " + pkt.nama + " (Isi " + ukuran + ")" + labelJumlah + " — " + totalPcs + " pcs";
         document.getElementById("paket-preview-isi").innerHTML = pkt.items.map(it => {
-            const gs = getGlazeStyle(it.glaze); const te = getTopEmoji(it.topping);
-            return `${gs.em} ${it.qty * paketJumlah}x ${escapeHtml(it.glaze)} + ${te} ${escapeHtml(it.topping)}`;
+            const gs = getGlazeStyle(it.glaze);
+            const adaTopping = it.topping && it.topping !== "-";
+            const teksTopping = adaTopping ? ` + ${getTopEmoji(it.topping)} ${escapeHtml(it.topping)}` : "";
+            return `${gs.em} ${it.qty * paketJumlah}x ${escapeHtml(it.glaze)}${teksTopping}`;
         }).join('<br>');
 
         if (stepRow) stepRow.style.display = maxJumlah > 1 ? "flex" : "none";
@@ -2234,9 +2251,15 @@
         const buatBaris = (list, ukuran) => {
             if (list.length === 0) return `<p style="font-size:13px;color:#999;font-style:italic;padding:6px 0;">Belum ada paket untuk isi ${ukuran}.</p>`;
             return list.map(pkt => {
-                const ringkas = pkt.items.map(it => `${it.qty}x ${escapeHtml(it.glaze)}+${escapeHtml(it.topping)}`).join(', ');
+                const tipe = pkt.tipe || 'donat';
+                const tipeBadge = tipe === 'bomboloni' ? '🧁 Bomboloni' : '🍩 Donat';
+                const ringkas = pkt.items.map(it => {
+                    const adaTopping = it.topping && it.topping !== "-";
+                    return `${it.qty}x ${escapeHtml(it.glaze)}${adaTopping ? '+' + escapeHtml(it.topping) : ''}`;
+                }).join(', ');
                 return `<div class="mgmt-item" style="align-items:flex-start;">
                     <div style="flex:1;padding-right:8px;">
+                        <span style="font-size:10px;font-weight:bold;color:${tipe === 'bomboloni' ? '#8d6e00' : '#D2721E'};">${tipeBadge}</span><br>
                         <strong>${escapeHtml(pkt.nama)}</strong>
                         <div style="font-size:12px;color:#777;margin-top:2px;">${ringkas}</div>
                     </div>
@@ -2255,8 +2278,34 @@
         const selG = document.getElementById("paket-form-glaze");
         const selT = document.getElementById("paket-form-topping");
         if (!selG || !selT) return;
-        selG.innerHTML = listGlazes.map(g => `<option value="${g}">${g}</option>`).join('');
+        const sumberG = paketFormTipe === 'bomboloni' ? listFillings : listGlazes;
+        selG.innerHTML = sumberG.map(g => `<option value="${g}">${g}</option>`).join('');
         selT.innerHTML = listToppings.map(t => `<option value="${t}">${t}</option>`).join('');
+    }
+
+    // Terapkan tampilan form sesuai tipe (tanpa cek/hapus rincian — dipakai saat form baru dibuka)
+    function terapkanUITipePaket(tipe) {
+        paketFormTipe = tipe;
+        const btnD = document.getElementById("btn-tipe-donat");
+        const btnB = document.getElementById("btn-tipe-bomboloni");
+        if (btnD) btnD.classList.toggle("aktif", tipe === "donat");
+        if (btnB) btnB.classList.toggle("aktif", tipe === "bomboloni");
+        const labelG = document.getElementById("paket-form-glaze-label");
+        const wrapT  = document.getElementById("paket-form-topping-wrap");
+        if (labelG) labelG.textContent = tipe === "bomboloni" ? "Isian" : "Glaze";
+        if (wrapT)  wrapT.style.display = tipe === "bomboloni" ? "none" : "block";
+        populatePaketFormSelects();
+        renderDraftPaketForm();
+    }
+
+    // Dipanggil dari tombol toggle — kalau rincian belum kosong, konfirmasi dulu sebelum reset
+    function setTipePaketForm(tipe) {
+        if (tipe === paketFormTipe) return;
+        if (adminPaketItems.length > 0) {
+            if (!confirm("Ganti tipe paket akan mengosongkan rincian yang sudah ditambahkan. Lanjutkan?")) return;
+            adminPaketItems = [];
+        }
+        terapkanUITipePaket(tipe);
     }
 
     function bukaFormPaket(ukuran, id) {
@@ -2269,8 +2318,13 @@
         document.getElementById("paket-form-nama").value = existing ? existing.nama : "";
         document.getElementById("paket-form-title").textContent = (existing ? "Edit" : "Tambah") + " Paket Isi " + ukuran;
         document.getElementById("paket-form-target").textContent = ukuran;
-        populatePaketFormSelects();
-        renderDraftPaketForm();
+
+        // Tipe dikunci saat mengedit paket lama, supaya rincian yang sudah ada tidak jadi tidak konsisten
+        const btnD = document.getElementById("btn-tipe-donat");
+        const btnB = document.getElementById("btn-tipe-bomboloni");
+        if (btnD) { btnD.disabled = !!existing; btnD.style.opacity = existing ? "0.5" : "1"; }
+        if (btnB) { btnB.disabled = !!existing; btnB.style.opacity = existing ? "0.5" : "1"; }
+        terapkanUITipePaket(existing ? (existing.tipe || 'donat') : 'donat');
 
         const sec = document.getElementById("paket-form-section");
         sec.style.display = "block";
@@ -2280,6 +2334,10 @@
     function tutupFormPaket() {
         document.getElementById("paket-form-section").style.display = "none";
         adminPaketUkuran = null; adminPaketEditId = null; adminPaketItems = [];
+        const btnD = document.getElementById("btn-tipe-donat");
+        const btnB = document.getElementById("btn-tipe-bomboloni");
+        if (btnD) { btnD.disabled = false; btnD.style.opacity = "1"; }
+        if (btnB) { btnB.disabled = false; btnB.style.opacity = "1"; }
     }
 
     function renderDraftPaketForm() {
@@ -2294,19 +2352,23 @@
             return;
         }
         ul.innerHTML = adminPaketItems.map((it, i) => {
-            const gs = getGlazeStyle(it.glaze); const te = getTopEmoji(it.topping);
-            return `<li class="mgmt-item"><span>${gs.em} ${it.qty}x ${escapeHtml(it.glaze)} + ${te} ${escapeHtml(it.topping)}</span><button class="btn-danger" style="padding:6px 10px;font-size:12px;width:auto;" onclick="hapusRincianFormPaket(${i})">Hapus</button></li>`;
+            const gs = getGlazeStyle(it.glaze);
+            const adaTopping = it.topping && it.topping !== "-";
+            const teksTopping = adaTopping ? ` + ${getTopEmoji(it.topping)} ${escapeHtml(it.topping)}` : "";
+            return `<li class="mgmt-item"><span>${gs.em} ${it.qty}x ${escapeHtml(it.glaze)}${teksTopping}</span><button class="btn-danger" style="padding:6px 10px;font-size:12px;width:auto;" onclick="hapusRincianFormPaket(${i})">Hapus</button></li>`;
         }).join('');
     }
 
     function tambahRincianFormPaket() {
+        const bombol  = paketFormTipe === 'bomboloni';
         const glaze   = document.getElementById("paket-form-glaze").value;
-        const topping = document.getElementById("paket-form-topping").value;
+        const topping = bombol ? '-' : document.getElementById("paket-form-topping").value;
         const qty     = parseInt(document.getElementById("paket-form-qty").value);
         const target  = parseInt(adminPaketUkuran);
         const totalSaatIni = adminPaketItems.reduce((s, it) => s + it.qty, 0);
 
-        if (!glaze || !topping) { alert("Pilih glaze dan topping dulu."); return; }
+        if (!glaze) { alert(bombol ? "Pilih isian dulu." : "Pilih glaze dan topping dulu."); return; }
+        if (!bombol && !topping) { alert("Pilih glaze dan topping dulu."); return; }
         if (isNaN(qty) || qty < 1) { alert("Masukkan jumlah yang benar."); return; }
         if (totalSaatIni + qty > target) { alert(`Kelebihan! Sisa slot paket ini tinggal ${target - totalSaatIni} pcs.`); return; }
 
@@ -2332,12 +2394,13 @@
         const ukuran    = adminPaketUkuran;
         const list      = ukuran === '6' ? paketIsi6 : paketIsi3;
         const fieldName = ukuran === '6' ? 'paket_isi6' : 'paket_isi3';
+        const tipe      = paketFormTipe;
 
         let listBaru;
         if (adminPaketEditId) {
-            listBaru = list.map(p => p.id === adminPaketEditId ? { id: p.id, nama, items: [...adminPaketItems] } : p);
+            listBaru = list.map(p => p.id === adminPaketEditId ? { id: p.id, nama, tipe, items: [...adminPaketItems] } : p);
         } else {
-            listBaru = [...list, { id: 'p' + Date.now(), nama, items: [...adminPaketItems] }];
+            listBaru = [...list, { id: 'p' + Date.now(), nama, tipe, items: [...adminPaketItems] }];
         }
 
         db.collection("pengaturan").doc("menu").set({ [fieldName]: listBaru }, { merge: true })
