@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Aan Donut - Pre-Order</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="icon" type="image/webp" href="logo.webp">
     <link rel="apple-touch-icon" href="logo.webp">
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -11,16 +14,16 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
-        :root { --primary: #D2721E; --secondary: #6B3410; --bg: #fdf5e6; --text: #333; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 15px; }
-        .container { max-width: 850px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        :root { --primary: #D2721E; --secondary: #6B3410; --gold: #E8890D; --bg: #fdf5e6; --text: #333; }
+        body { font-family: 'Plus Jakarta Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 15px; }
+        .container { max-width: 850px; margin: 0 auto; background: white; padding: 20px; border-radius: 14px; box-shadow: 0 8px 28px rgba(107,52,16,0.12); }
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--secondary); padding-bottom: 10px; margin-bottom: 20px; gap: 10px; }
         .header-brand { display: flex; align-items: center; gap: 10px; }
         .brand-logo { height: 42px; width: auto; display: block; }
         .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
-        .header h1 { font-size: 24px; margin: 0; }
-        .brand-tagline { font-size: 11px; margin: 0; color: var(--secondary); font-style: italic; font-weight: 400; }
-        h1, h2, h3 { color: var(--primary); margin-top: 0; }
+        .header h1 { font-size: 25px; margin: 0; font-family: 'Fraunces', serif; font-weight: 700; letter-spacing: 0.3px; }
+        .brand-tagline { font-size: 11px; margin: 0; color: var(--secondary); font-family: 'Fraunces', serif; font-style: italic; font-weight: 500; }
+        h1, h2, h3 { color: var(--primary); margin-top: 0; font-family: 'Fraunces', serif; font-weight: 700; }
         button { background-color: var(--primary); color: white; border: none; padding: 14px 18px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; font-size: 15px; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
         button:hover { background-color: #6B3410; }
         button:disabled { background-color: #ccc; cursor: not-allowed; }
@@ -100,7 +103,7 @@
 
         /* SUCCESS SCREEN */
         .success-screen { text-align: center; padding: 30px 10px; }
-        .po-badge { background: var(--primary); color: white; font-size: 26px; font-weight: bold; padding: 14px 30px; border-radius: 12px; display: inline-block; margin: 14px 0; letter-spacing: 3px; border: 3px solid var(--secondary); box-shadow: 0 4px 14px rgba(210,114,30,0.35); }
+        .po-badge { background: linear-gradient(135deg, var(--gold), var(--primary)); color: white; font-family: 'Fraunces', serif; font-size: 26px; font-weight: 700; padding: 14px 30px; border-radius: 12px; display: inline-block; margin: 14px 0; letter-spacing: 3px; border: 3px solid var(--secondary); box-shadow: 0 4px 14px rgba(210,114,30,0.35); }
         .success-note { font-size: 13px; color: #666; margin: 12px 0 20px; line-height: 1.7; }
         .success-detail-card { background: #fffaf0; border: 1px solid #f0d8c0; border-radius: 10px; padding: 14px; text-align: left; margin-bottom: 20px; }
 
@@ -638,7 +641,9 @@
 
     <!-- ====== LOGIN AREA ====== -->
     <div id="login-area">
-        <h2>Login Admin</h2>
+        <img src="logo.webp" alt="Aan Donut" style="width:72px;height:72px;display:block;margin:0 auto 12px;border-radius:50%;">
+        <h2 style="margin-bottom:2px;">Login Admin</h2>
+        <p style="font-size:12px;color:#888;margin:0 0 18px;">Panel pengelola AAN DONUT</p>
         <input type="password" id="password-admin" placeholder="Masukkan Password Admin...">
         <button onclick="loginAdmin()" style="margin-top:10px;">Masuk</button>
         <button onclick="kembaliKeMenu()" class="btn-grey" style="margin-top:10px;">Kembali</button>
@@ -660,7 +665,7 @@
         <h2>Daftar Pesanan PO Masuk</h2>
         <div style="margin-bottom:15px;display:flex;flex-wrap:wrap;gap:8px;">
             <button onclick="cetakStrukTerpilih()" class="btn-print-batch">&#128424; Cetak Terpilih</button>
-            <button onclick="hapusPesananTerpilih()" class="btn-danger" style="background:#e67e22;">&#128465; Hapus Selesai</button>
+            <button onclick="hapusPesananTerpilih()" class="btn-danger" style="background:#e67e22;">&#128465; Hapus yang Dicentang</button>
             <button onclick="hapusSemuaPesanan()" class="btn-danger" style="background:#8b0000;flex:1 1 100%;">&#128465; Bersihkan Semua Data</button>
         </div>
 
@@ -2090,7 +2095,7 @@
     // ---- Admin: Orders ----
     function muatDataPesananOnline() {
         if (unsubscribeOrders) unsubscribeOrders();
-        unsubscribeOrders = db.collection("pesanan").orderBy("waktu_unix", "desc").onSnapshot((snap) => {
+        unsubscribeOrders = db.collection("pesanan").orderBy("waktu_unix", "desc").limit(200).onSnapshot((snap) => {
             dataPesananGlobal = [];
             const tbody = document.getElementById("tabel-pesanan");
             tbody.innerHTML = "";
