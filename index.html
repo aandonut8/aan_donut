@@ -106,6 +106,23 @@
         .po-badge { background: linear-gradient(135deg, var(--gold), var(--primary)); color: white; font-family: 'Fraunces', serif; font-size: 26px; font-weight: 700; padding: 14px 30px; border-radius: 12px; display: inline-block; margin: 14px 0; letter-spacing: 3px; border: 3px solid var(--secondary); box-shadow: 0 4px 14px rgba(210,114,30,0.35); }
         .success-note { font-size: 13px; color: #666; margin: 12px 0 20px; line-height: 1.7; }
         .success-detail-card { background: #fffaf0; border: 1px solid #f0d8c0; border-radius: 10px; padding: 14px; text-align: left; margin-bottom: 20px; }
+        .payment-info-card { background: #fffaf0; border: 1px solid #f0d8c0; border-radius: 10px; padding: 16px; text-align: center; margin-bottom: 20px; }
+        .payment-info-title { font-weight: bold; color: var(--primary); font-size: 16px; margin-bottom: 4px; }
+        .payment-sub { font-size: 12.5px; color: #777; margin: 0 0 14px; line-height: 1.6; }
+        .payment-method-label { font-weight: bold; font-size: 13px; color: var(--secondary); margin-bottom: 8px; }
+        .qris-image { max-width: 260px; width: 100%; height: auto; border-radius: 8px; border: 1px solid #f0d8c0; display: block; margin: 0 auto 8px; }
+        .payment-note { font-size: 12.5px; color: #666; line-height: 1.6; margin: 12px 0 0; }
+        .payment-divider { display: flex; align-items: center; gap: 10px; color: #aaa; font-size: 12px; margin: 16px 0; }
+        .payment-divider::before, .payment-divider::after { content: ""; flex: 1; height: 1px; background: #f0d8c0; }
+        .rek-box { background: white; border: 1px solid #f0d8c0; border-radius: 10px; padding: 12px; }
+        .rek-bank { font-size: 12px; color: #888; }
+        .rek-nomor { font-family: 'Fraunces', serif; font-size: 24px; font-weight: 700; letter-spacing: 2px; font-variant-numeric: lining-nums tabular-nums; color: var(--secondary); margin: 2px 0; word-break: break-all; }
+        .rek-nama { font-size: 13px; color: #555; margin-bottom: 10px; }
+        .btn-salin { padding: 9px 20px; font-size: 13px; border-radius: 8px; }
+        .payment-terms { text-align: left; background: white; border: 1px dashed #e3c9ad; border-radius: 8px; padding: 10px 12px; margin-top: 14px; font-size: 12px; color: #666; line-height: 1.65; }
+        .payment-terms strong { color: var(--secondary); }
+        .payment-terms .terms-sub { display: block; margin-top: 10px; }
+        .payment-terms ul { margin: 4px 0 0; padding-left: 18px; }
 
         /* ADMIN */
         #login-area { display: none; text-align: center; padding: 30px 0; }
@@ -133,6 +150,13 @@
         .type-price { font-size: 11px; color: #888; margin-top: 2px; }
         .donat-type-card.active .type-nm { color: var(--primary); }
         .donat-type-card.active .type-price { color: #28a745; font-weight: bold; }
+        .donat-type-card.habis { background: #f6f6f6; border-color: #e4e4e4; cursor: not-allowed; pointer-events: none; box-shadow: none; }
+        .donat-type-card.habis .type-em { filter: grayscale(1); opacity: 0.4; }
+        .donat-type-card.habis .type-nm, .donat-type-card.habis .type-price { color: #aaa; font-weight: normal; }
+        .type-habis { font-size: 11px; font-weight: bold; color: #b02a37; background: #fdecee; border-radius: 10px; padding: 2px 9px; }
+        .semua-habis-note { display: none; margin: 10px 0 0; padding: 10px 12px; background: #fdecee; border: 1px solid #f3c6cb; border-radius: 8px; font-size: 13px; color: #8a1f2b; text-align: center; line-height: 1.5; }
+        .site-footer { margin-top: 22px; padding: 14px 0 54px; border-top: 1px dashed #f0d8c0; text-align: center; font-size: 12.5px; }
+        .site-footer a { color: var(--secondary); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
         .jenis-badge { display: inline-flex; align-items: center; gap: 5px; background: #FFF5EB; border: 1px solid #D2721E; color: #D2721E; font-size: 12px; font-weight: bold; padding: 3px 10px; border-radius: 20px; }
 
         /* STATUS PO TOGGLE */
@@ -278,6 +302,9 @@
             .po-badge { font-size: 22px; padding: 12px 22px; letter-spacing: 2px; }
             .success-note { font-size: 12px; margin: 10px 0 16px; }
             .success-detail-card { font-size: 12px; padding: 10px; }
+            .payment-info-card { padding: 12px; }
+            .rek-nomor { font-size: 21px; letter-spacing: 1.5px; }
+            .payment-terms { font-size: 11.5px; }
 
             /* =====================================================
                TABEL ADMIN → KARTU VERTIKAL
@@ -369,6 +396,7 @@
             .type-em { font-size: 24px; }
             .type-nm { font-size: 11px; }
             .type-price { font-size: 10px; }
+            .type-habis { font-size: 10px; padding: 1px 7px; }
 
             /* --- WA FLOAT --- */
             #wa-float { bottom: 12px; right: 12px; padding: 10px 14px; font-size: 13px; }
@@ -441,6 +469,7 @@
                         <p>📦 <strong>Sistem Pre-Order</strong> — pesanan dikerjakan sesuai jadwal PO yang masuk.</p>
                         <p>💬 Admin akan konfirmasi jadwal via WA setelah order masuk.</p>
                         <p>📌 Min. order <strong>6 pcs</strong>, kelipatan 3 (6, 9, 12, 15, dst).</p>
+                        <p>💳 Pembayaran via QRIS / transfer BNI. Kirim jauh (kurir/ojol): DP min. 50% di muka.</p>
                     </div>
                 </div>
 
@@ -468,6 +497,7 @@
                             <span class="type-price" id="price-bomboloni">Rp 25.000 / 6 pcs</span>
                         </div>
                     </div>
+                    <p id="semua-habis-note" class="semua-habis-note">Semua jenis donat sedang habis untuk sementara. Pantau info terbaru dari admin ya 🙏</p>
                 </div>
 
                 <div class="form-group">
@@ -632,9 +662,49 @@
                     WhatsApp akan terbuka otomatis untuk konfirmasi ke admin.
                 </p>
                 <div class="success-detail-card" id="success-detail"></div>
+                <div class="payment-info-card">
+                    <div class="payment-info-title">💳 Cara Pembayaran</div>
+                    <p class="payment-sub">Pilih salah satu. Nominalnya sesuai total pesanan di atas ya.</p>
+
+                    <div class="payment-method-label">Bayar pakai QRIS</div>
+                    <img src="qris.webp" alt="QRIS AAN DONUT - BAKERY" class="qris-image">
+                    <p class="payment-note" style="margin-top:0;">Bisa dari semua aplikasi bank &amp; e-wallet. Bayar dari HP yang sama? Screenshot QRIS ini, lalu pilih gambarnya dari galeri di aplikasi pembayaranmu.</p>
+
+                    <div class="payment-divider">atau transfer bank</div>
+
+                    <div class="rek-box">
+                        <div class="rek-bank">Bank BNI</div>
+                        <div class="rek-nomor" id="rek-nomor">1472478028</div>
+                        <div class="rek-nama">a.n. Andri Abdi Negara (pemilik AAN DONUT)</div>
+                        <button type="button" class="btn-salin" onclick="salinNoRek(this)">Salin nomor rekening</button>
+                    </div>
+
+                    <div class="payment-terms">
+                        <strong>Ketentuan pembayaran</strong>
+                        <ul>
+                            <li>Ambil sendiri / antar area dekat: boleh bayar saat serah terima, atau transfer di muka.</li>
+                            <li>Kirim jauh (kurir/ojol): DP minimal 50% (atau lunas) sebelum pesanan diproses. DP yang belum masuk dalam 1x24 jam, pesanan dibatalkan.</li>
+                        </ul>
+                        <strong class="terms-sub">Pembatalan &amp; pengembalian dana</strong>
+                        <ul>
+                            <li>Pembatalan dari pembeli baru berlaku setelah dikonfirmasi admin lewat WhatsApp.</li>
+                            <li>Sebelum pesanan diproses: dana dikembalikan 100%.</li>
+                            <li>Setelah pesanan diproses (admin akan mengabari lewat WhatsApp): biaya pembatalan 25% dari total pesanan, dipotong dari pembayaran yang sudah masuk. Contoh total Rp 100.000: bayar lunas kembali Rp 75.000, bayar DP Rp 50.000 kembali Rp 25.000.</li>
+                            <li>Pesanan yang sudah jadi tidak bisa dibatalkan.</li>
+                            <li>Jika kami yang membatalkan (kendala teknis), dana dikembalikan 100% lewat transfer rekening atau DANA.</li>
+                        </ul>
+                    </div>
+
+                    <p class="payment-note">Setelah bayar, kirim buktinya ke admin lewat tombol di bawah. Nomor PO ikut terkirim otomatis.</p>
+                    <button type="button" onclick="kirimBuktiBayar()" style="width:100%;background:#25D366;color:white;font-size:14px;padding:12px;margin-top:10px;">Kirim Bukti Bayar via WhatsApp&nbsp;&#128242;</button>
+                </div>
                 <button onclick="pesanBaru()" style="width:100%;font-size:15px;padding:14px;margin-bottom:8px;">Buat Pesanan Baru 🍩</button>
                 <button onclick="bukaWAAdmin()" style="background:none;color:#888;font-size:12px;text-decoration:underline;padding:6px;min-height:auto;">WhatsApp tidak otomatis terbuka? Ketuk di sini</button>
             </div>
+        </div>
+
+        <div class="site-footer">
+            <a href="https://maps.app.goo.gl/HtheXrQqeA8Q2zXa8" target="_blank" rel="noopener">&#128205; Lihat AAN DONUT di Google Maps</a>
         </div>
 
     </div><!-- end customer-area -->
@@ -765,6 +835,12 @@
             <button onclick="simpanInfoPelanggan()" class="btn-success" style="width:100%;font-size:15px;padding:13px;">&#128190; Simpan Informasi Pelanggan</button>
         </div>
 
+
+        <hr style="margin:22px 0;border:none;border-top:1px solid #e8d8c8;">
+
+        <h2>&#127849; Ketersediaan Jenis Donat</h2>
+        <p style="font-size:13px;color:#888;margin-top:-10px;">Kalau stok satu jenis kosong, tandai <strong>Habis</strong>. Di halaman pelanggan jenis itu langsung jadi abu-abu dan tidak bisa dipilih (tanpa perlu refresh). Pelanggan yang sedang mengisi pesanan jenis itu dikembalikan ke awal.</p>
+        <div id="admin-jenis-list" style="margin-bottom:8px;"></div>
 
         <hr style="margin:22px 0;border:none;border-top:1px solid #e8d8c8;">
 
@@ -954,6 +1030,15 @@
     let selectedDonatType = ""; // "Donat Biasa", "Donat Kentang", "Donat Labu"
     let urlWATersimpan = ""; // [FIX #4] simpan link WA hasil generate, dibuka manual di layar sukses
 
+    // ---- Ketersediaan Jenis Donat: State ----
+    let jenisNonaktif = [];   // nama jenis yang ditandai HABIS oleh admin (tersimpan di pengaturan/menu → jenis_nonaktif)
+    const DAFTAR_JENIS = [
+        { nama: "Donat Biasa",   em: "🍩" },
+        { nama: "Donat Kentang", em: "🥔" },
+        { nama: "Donat Labu",    em: "🎃" },
+        { nama: "Bomboloni",     em: "🧁" }
+    ];
+
     // ---- Paket Cepat: State ----
     let paketIsi3 = [], paketIsi6 = [];   // daftar varian paket per ukuran, dari Firestore (diatur admin)
     let modeRasa = 'paket';                // mode aktif di Langkah 2: 'paket' | 'manual'
@@ -1057,10 +1142,90 @@
     }
 
     function pilihJenisDonat(jenis, el) {
+        if (jenisHabis(jenis)) return;   // jenis ini ditandai habis oleh admin
         document.querySelectorAll('.donat-type-card').forEach(c => c.classList.remove('active'));
         el.classList.add('active');
         selectedDonatType = jenis;
         previewHarga();
+    }
+
+    // ---- Ketersediaan Jenis Donat ----
+    function jenisHabis(nama) {
+        return !!nama && jenisNonaktif.includes(nama);
+    }
+
+    // Dipanggil tiap data menu dari Firestore berubah: abu-abukan kartu jenis yang habis, dan kalau
+    // pelanggan sedang memilih/mengisi jenis yang baru saja habis, kembalikan ke awal.
+    function terapkanKetersediaanJenis() {
+        const kartu = document.querySelectorAll('.donat-type-card');
+        let jumlahHabis = 0;
+        kartu.forEach(card => {
+            const habis = jenisHabis(card.dataset.type);
+            if (habis) jumlahHabis++;
+            card.classList.toggle('habis', habis);
+            card.setAttribute('aria-disabled', habis ? 'true' : 'false');
+            let tag = card.querySelector('.type-habis');
+            if (habis && !tag) {
+                tag = document.createElement('span');
+                tag.className = 'type-habis';
+                tag.textContent = 'Habis';
+                card.appendChild(tag);
+            } else if (!habis && tag) {
+                tag.remove();
+            }
+            if (habis) card.classList.remove('active');
+        });
+
+        const note = document.getElementById('semua-habis-note');
+        if (note) note.style.display = (kartu.length > 0 && jumlahHabis === kartu.length) ? 'block' : 'none';
+
+        if (jenisHabis(selectedDonatType)) {
+            const nama = selectedDonatType;
+            if (currentStep === 2 || currentStep === 3) {
+                pesanBaru();
+                alert(`Maaf Kak, ${nama} baru saja habis 🙏\n\nPesananmu dikembalikan ke awal, silakan pilih jenis lain ya.`);
+            } else {
+                selectedDonatType = "";
+                previewHarga();
+            }
+        }
+    }
+
+    // Admin: daftar jenis + tombol Tersedia/Habis (pola sama dengan tab Bahan)
+    function renderKetersediaanJenisAdmin() {
+        const wadah = document.getElementById("admin-jenis-list");
+        if (!wadah) return;
+        let html = '<div class="bahan-list">';
+        DAFTAR_JENIS.forEach((j, i) => {
+            const habis  = jenisHabis(j.nama);
+            const rowCls = habis ? "bahan-row bahan-habis-row" : "bahan-row";
+            const btnCls = habis ? "btn-bahan-habis" : "btn-bahan-masih";
+            const btnTxt = habis ? "&#10007; Habis" : "&#10003; Tersedia";
+            html += `<div class="${rowCls}">
+                <span class="bahan-nama">${j.em} ${escapeHtml(j.nama)}</span>
+                <div class="bahan-actions">
+                    <button class="${btnCls}" onclick="toggleKetersediaanJenis(${i})">${btnTxt}</button>
+                </div>
+            </div>`;
+        });
+        html += "</div>";
+        wadah.innerHTML = html;
+    }
+
+    function toggleKetersediaanJenis(index) {
+        const j = DAFTAR_JENIS[index];
+        if (!j) return;
+        const jadiHabis = !jenisHabis(j.nama);
+        const pesan = jadiHabis
+            ? `Tandai "${j.nama}" sebagai HABIS?\n\nDi halaman pelanggan jenis ini langsung tidak bisa dipilih.`
+            : `Tandai "${j.nama}" sebagai TERSEDIA kembali?`;
+        if (!confirm(pesan)) return;
+        const baru = jadiHabis
+            ? [...jenisNonaktif.filter(n => n !== j.nama), j.nama]
+            : jenisNonaktif.filter(n => n !== j.nama);
+        // Tampilan ikut berubah otomatis lewat listener pengaturan/menu di bawah.
+        db.collection("pengaturan").doc("menu").set({ jenis_nonaktif: baru }, { merge: true })
+            .catch((err) => alert("⚠️ Gagal menyimpan ketersediaan jenis donat!\n" + err.message));
     }
 
     // ---- Firestore: Load Pengaturan ----
@@ -1074,6 +1239,7 @@
             hargaDusBomboloni = doc.data().harga_dus_bomboloni || 25000;
             paketIsi3     = doc.data().paket_isi3 || [];
             paketIsi6     = doc.data().paket_isi6 || [];
+            jenisNonaktif = Array.isArray(doc.data().jenis_nonaktif) ? doc.data().jenis_nonaktif : [];
         } else {
             // [FIX - keamanan data] SENGAJA tidak lagi menulis dokumen ini ke Firestore di sini.
             // Sebelumnya, siapa pun yang membuka halaman (termasuk pelanggan biasa) bisa
@@ -1081,11 +1247,14 @@
             // mengembalikan "tidak ada". Sekarang cukup tampilkan default di layar;
             // yang benar-benar menyimpan ke Firestore hanya admin lewat tombol Simpan.
             listGlazes = defaultGlazes; listToppings = defaultToppings; listFillings = defaultFillings;
+            jenisNonaktif = [];
             console.warn("[Pengaturan] Dokumen 'pengaturan/menu' tidak ditemukan — menampilkan nilai default TANPA menyimpannya ke Firestore.");
         }
         renderVisualCards();
         muatManajemenMenu();
         updateDonatTypePrices();
+        terapkanKetersediaanJenis();
+        renderKetersediaanJenisAdmin();
         renderPaketAdminList();
         populatePaketFormSelects();
         renderPaketCustomer();
@@ -1742,6 +1911,14 @@
         if (!isValidNoWA(waRaw)) { alert("Format nomor WA sepertinya belum benar.\nContoh yang benar: 0812xxxxxxx atau 62812xxxxxxx"); return; }
         const wa = normalisasiNoWA(waRaw);
 
+        // Jenis yang dipesan ternyata baru saja ditandai habis oleh admin → jangan diproses.
+        if (jenisHabis(selectedDonatType)) {
+            const namaHabis = selectedDonatType;
+            pesanBaru();
+            alert(`Maaf Kak, ${namaHabis} baru saja habis 🙏\n\nSilakan pilih jenis lain ya.`);
+            return;
+        }
+
         // [FIX] Buka tab kosong SEKARANG JUGA, sinkron, sebelum ada 'await' apa pun.
         // Ini detik yang sama dengan klik tombol, jadi browser (termasuk Safari/iOS &
         // browser bawaan WA/IG/FB yang lebih strict) pasti anggap ini hasil klik langsung
@@ -1830,6 +2007,43 @@
         if (urlWATersimpan) window.open(urlWATersimpan, "_blank");
     }
 
+    // ---- Pembayaran: salin nomor rekening & kirim bukti bayar ----
+    function salinNoRek(btn) {
+        const noRek = document.getElementById("rek-nomor").textContent.trim();
+        const label = btn.textContent;
+        const selesai = () => {
+            btn.textContent = "Tersalin ✓";
+            setTimeout(() => { btn.textContent = label; }, 2000);
+        };
+        const cadangan = () => {
+            const ta = document.createElement("textarea");
+            ta.value = noRek;
+            ta.setAttribute("readonly", "");
+            ta.style.position = "fixed";
+            ta.style.opacity = "0";
+            document.body.appendChild(ta);
+            ta.select();
+            let ok = false;
+            try { ok = document.execCommand("copy"); } catch (e) {}
+            document.body.removeChild(ta);
+            if (ok) selesai(); else alert("Nomor rekening: " + noRek);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(noRek).then(selesai).catch(cadangan);
+        } else {
+            cadangan();
+        }
+    }
+
+    // Nomor PO & total dibaca dari layar sukses, jadi alur order di atas tidak diubah.
+    function kirimBuktiBayar() {
+        const po      = document.getElementById("po-number-display").textContent.trim();
+        const totalEl = document.querySelector("#success-detail .total-harga-green");
+        const total   = totalEl ? totalEl.textContent.trim() : "";
+        const teks    = `Halo kak, saya sudah melakukan pembayaran untuk *${po}*${total ? ` (total ${total})` : ""}. Berikut bukti pembayarannya 🙏`;
+        window.open(`https://api.whatsapp.com/send?phone=${nomorWAAdmin}&text=${encodeURIComponent(teks)}`, "_blank");
+    }
+
     function pesanBaru() {
         totalDonat = 0; sisaKuota = 0; keranjangVarian = [];
         selectedGlaze = ""; selectedTopping = ""; selectedDonatType = ""; paketDipilih = null; paketJumlah = 1;
@@ -1863,7 +2077,8 @@
                     `<p>⏰ Batas order: <strong>${escapeHtml(jamStr)}</strong></p>` +
                     (infoStr ? `<p>📢 ${escapeHtml(infoStr)}</p>` : "") +
                     `<p>💬 Admin akan konfirmasi jadwal via WA setelah order masuk.</p>` +
-                    `<p>📌 Min. order <strong>6 pcs</strong>, kelipatan 3 (6, 9, 12, 15, dst).</p>`;
+                    `<p>📌 Min. order <strong>6 pcs</strong>, kelipatan 3 (6, 9, 12, 15, dst).</p>` +
+                    `<p>💳 Pembayaran via QRIS / transfer BNI. Kirim jauh (kurir/ojol): DP min. 50% di muka.</p>`;
             } else {
                 const pesan = data.pesan_tutup || "PO sedang tutup. Nantikan info pembukaan berikutnya!";
                 konten.innerHTML =
